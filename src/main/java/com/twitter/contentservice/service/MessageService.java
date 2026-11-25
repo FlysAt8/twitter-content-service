@@ -24,8 +24,16 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final UserServiceClient userServiceClient;
     private final MessageAssembler assembler;
+    private final UserRoleService userRoleService;
 
     public MessageResponse create(UUID authorId, CreateMessageRequest request) {
+
+        if (!userRoleService.hasAnyRole(authorId, "producer", "administrator")) {
+            throw new ForbiddenException(
+                    "Создавать сообщения могут только producer и administrator"
+            );
+        }
+
         UserShortResponse author = userServiceClient.getUser(authorId)
                 .orElseThrow(() -> new UnauthorizedException("Пользователь не найден"));
 
@@ -53,12 +61,28 @@ public class MessageService {
     }
 
     public void delete(UUID currentUserId, UUID id) {
+
         Message message = messageRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Сообщение не найдено"));
 
-        if (!message.getAuthorId().equals(currentUserId)) {
-            throw new ForbiddenException("Можно удалять только свои сообщения");
+        boolean isAdministrator = userRoleService.hasAnyRole(
+                currentUserId, "administrator"
+        );
+
+        boolean isOwner = message.getAuthorId().equals(currentUserId);
+
+        if (!isAdministrator && !isOwner) {
+            throw new ForbiddenException(
+                    "Можно удалять только свои сообщения"
+            );
         }
+
+        if (!isAdministrator && !userRoleService.hasAnyRole(currentUserId, "producer")) {
+            throw new ForbiddenException(
+                    "Удалять сообщения могут только producer и administrator"
+            );
+        }
+
         messageRepository.delete(message);
     }
 }

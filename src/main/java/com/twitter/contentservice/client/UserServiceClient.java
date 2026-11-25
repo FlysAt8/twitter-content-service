@@ -1,6 +1,7 @@
 package com.twitter.contentservice.client;
 
 import com.twitter.contentservice.dto.ApiResponse;
+import com.twitter.contentservice.dto.UserDetailsResponse;
 import com.twitter.contentservice.dto.UserShortResponse;
 import com.twitter.contentservice.exceptions.UnauthorizedException;
 import com.twitter.contentservice.exceptions.UserServiceUnavailableException;
@@ -40,7 +41,8 @@ public class UserServiceClient {
     }
 
     public boolean exists(UUID id) {
-        return getUser(id).isPresent();
+        Optional<UserShortResponse> user = getUser(id);
+        return user.isPresent();
     }
 
     public Map<UUID, UserShortResponse> getUsers(Collection<UUID> ids) {
@@ -63,6 +65,25 @@ public class UserServiceClient {
             throw translate(e);
         }
     }
+
+
+    public Optional<UserDetailsResponse> getUserDetails(UUID id) {
+        try {
+            ApiResponse<UserDetailsResponse> response = restClient.get()
+                    .uri("/users/{id}", id)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+
+            return Optional.ofNullable(response)
+                    .map(ApiResponse::getData);
+
+        } catch (HttpClientErrorException e) {
+            throw translate(e);
+        } catch (RestClientException e) {
+            throw translate(e);
+        }
+    }
+
 
     private RuntimeException translate(RestClientException e) {
         if (e instanceof HttpClientErrorException.Unauthorized) {

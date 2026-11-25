@@ -32,6 +32,7 @@ public class SubscriptionController {
     @PostMapping
     public ResponseEntity<ApiResponse<SubscriptionResponse>> subscribe(@AuthenticationPrincipal UUID currentUserId,
                                                                        @Valid @RequestBody CreateSubscriptionRequest request) {
+
         SubscriptionResponse response = subscriptionService.subscribe(currentUserId, request.getFollowingId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(response));
     }

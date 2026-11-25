@@ -7,6 +7,7 @@ import com.twitter.contentservice.dto.UserShortResponse;
 import com.twitter.contentservice.entity.Subscription;
 import com.twitter.contentservice.exceptions.BadRequestException;
 import com.twitter.contentservice.exceptions.ConflictException;
+import com.twitter.contentservice.exceptions.ForbiddenException;
 import com.twitter.contentservice.exceptions.NotFoundException;
 import com.twitter.contentservice.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +26,15 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final UserServiceClient userServiceClient;
     private final UserDirectory userDirectory;
+    private final UserRoleService userRoleService;
 
     public SubscriptionResponse subscribe(UUID followerId, UUID followingId) {
+
+        if (!userRoleService.hasAnyRole(followerId, "subscriber", "administrator")) {
+            throw new ForbiddenException(
+                    "Подписываться могут только subscriber и administrator"
+            );
+        }
         if (followerId.equals(followingId)) {
             throw new BadRequestException("Нельзя подписаться на самого себя");
         }
@@ -46,6 +54,11 @@ public class SubscriptionService {
     }
 
     public void unsubscribe(UUID followerId, UUID followingId) {
+        if (!userRoleService.hasAnyRole(followerId, "subscriber", "administrator")) {
+            throw new ForbiddenException(
+                    "Отписываться могут только subscriber и administrator"
+            );
+        }
         int deleted = subscriptionRepository.deleteByPair(followerId, followingId);
         if (deleted == 0) {
             throw new NotFoundException("Подписка не найдена");
